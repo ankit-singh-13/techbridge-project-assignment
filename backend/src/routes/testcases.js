@@ -14,7 +14,9 @@ router.get('/', async (req, res, next) => {
     const { projectId, search = '', priority, type, page = 1, limit = 20 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
     const values = [projectId, `%${search}%`, priority || null, type || null, Number(limit), offset];
-    const { rows } = await query(`SELECT tc.*, u.name AS assigned_to_name, COUNT(*) OVER() AS total
+    const { rows } = await query(`SELECT tc.*, u.name AS assigned_to_name,
+      COALESCE((SELECT json_agg(json_build_object('id', ts.id, 'step_order', ts.step_order, 'action', ts.action, 'expected_result', ts.expected_result) ORDER BY ts.step_order) FROM test_steps ts WHERE ts.test_case_id = tc.id), '[]') AS steps,
+      COUNT(*) OVER() AS total
       FROM test_cases tc LEFT JOIN users u ON u.id=tc.assigned_to
       WHERE ($1::int IS NULL OR tc.project_id=$1) AND (tc.title ILIKE $2 OR $2='%%')
       AND ($3::text IS NULL OR tc.priority=$3) AND ($4::text IS NULL OR tc.type=$4)
@@ -39,8 +41,10 @@ router.post('/', authorize('admin', 'test-lead'), [body('title').notEmpty(), bod
 
 router.put('/:id', authorize('admin', 'test-lead'), async (req, res, next) => {
   try {
-    const { title, description, priority, type, preconditions, postconditions, tags, assigned_to } = req.body;
+    const { title, description, priority, type, preconditions, postconditions, tags, assigned_to, steps = [] } = req.body;
     const { rows } = await query('UPDATE test_cases SET title=$1,description=$2,priority=$3,type=$4,preconditions=$5,postconditions=$6,tags=$7,assigned_to=$8,updated_at=now() WHERE id=$9 RETURNING *', [title, description, priority, type, preconditions, postconditions, tags, assigned_to, req.params.id]);
+    await query('DELETE FROM test_steps WHERE test_case_id=$1', [req.params.id]);
+    await Promise.all(steps.map((step, index) => query('INSERT INTO test_steps (test_case_id,step_order,action,expected_result) VALUES ($1,$2,$3,$4)', [req.params.id, index + 1, step.action, step.expected_result])));
     await invalidate('analytics:*');
     res.json(rows[0]);
   } catch (error) {

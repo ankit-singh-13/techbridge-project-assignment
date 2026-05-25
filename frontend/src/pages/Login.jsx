@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const demos = ['admin@example.com', 'lead@example.com', 'tester@example.com', 'readonly@example.com'];
@@ -26,9 +26,10 @@ export default function Login() {
       <h1>Test Case Management</h1>
       <p>Use any demo account. Password: <code>Password123!</code></p>
       <select value={email} onChange={(event) => setEmail(event.target.value)}>{demos.map((item) => <option key={item}>{item}</option>)}</select>
-      <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+      <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" />
       {error && <p className="error">{error}</p>}
       <button>Login</button>
+      <p className="small">Need an account? <Link to="/register">Register</Link></p>
     </form>
   </section>;
 }

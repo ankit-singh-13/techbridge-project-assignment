@@ -8,11 +8,13 @@ import Layout from './components/Layout.jsx';
 import './styles.css';
 
 const Login = lazy(() => import('./pages/Login.jsx'));
+const Register = lazy(() => import('./pages/Register.jsx'));
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const Projects = lazy(() => import('./pages/Projects.jsx'));
 const TestCases = lazy(() => import('./pages/TestCases.jsx'));
 const Suites = lazy(() => import('./pages/Suites.jsx'));
 const Executions = lazy(() => import('./pages/Executions.jsx'));
+const Users = lazy(() => import('./pages/Users.jsx'));
 
 function Protected({ children }) {
   const { user } = useAuth();
@@ -28,13 +30,16 @@ createRoot(document.getElementById('root')).render(
             <Suspense fallback={<div className="loader">Loading module...</div>}>
               <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
                 <Route path="/" element={<Protected><Layout /></Protected>}>
                   <Route index element={<Dashboard />} />
                   <Route path="projects" element={<Projects />} />
                   <Route path="test-cases" element={<TestCases />} />
                   <Route path="suites" element={<Suites />} />
                   <Route path="executions" element={<Executions />} />
+                  <Route path="users" element={<Users />} />
                 </Route>
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
           </BrowserRouter>

@@ -11,7 +11,15 @@ router.get('/', async (req, res, next) => {
     const key = `suites:${req.query.projectId || 'all'}`;
     const cached = await getCache(key);
     if (cached) return res.json({ data: cached, cache: 'hit' });
-    const { rows } = await query('SELECT ts.*, COUNT(tsc.test_case_id)::int AS case_count FROM test_suites ts LEFT JOIN test_suite_cases tsc ON tsc.suite_id=ts.id WHERE ($1::int IS NULL OR ts.project_id=$1) GROUP BY ts.id ORDER BY ts.created_at DESC', [req.query.projectId || null]);
+    const { rows } = await query(`SELECT ts.id, ts.project_id, ts.name, ts.description, ts.created_at,
+      COUNT(tsc.test_case_id)::int AS case_count,
+      COALESCE(json_agg(json_build_object('id', tc.id, 'title', tc.title) ORDER BY tc.title) FILTER (WHERE tc.id IS NOT NULL), '[]') AS cases
+      FROM test_suites ts
+      LEFT JOIN test_suite_cases tsc ON tsc.suite_id=ts.id
+      LEFT JOIN test_cases tc ON tc.id=tsc.test_case_id
+      WHERE ($1::int IS NULL OR ts.project_id=$1)
+      GROUP BY ts.id
+      ORDER BY ts.created_at DESC`, [req.query.projectId || null]);
     await setCache(key, rows, 1800);
     res.json({ data: rows, cache: 'miss' });
   } catch (error) {
